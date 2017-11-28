@@ -214,25 +214,57 @@ def conjugateMethod(symbolVec, costSymbolic, **args):
     gradCost = costFuncs['grad']
     hessianCost = costFuncs['hess']
 
-    def conjugateGradient(x0, params):
+    lineSearchMethod = args.pop('lineSearchMethod', None)
+    if lineSearchMethod is None or lineSearchMethod is noLineSearch:
+        def conjugateGradient(x0, params):
 
-        x0 = x0.squeeze()
-        prevDirection = params.pop('prevDirection', np.zeros(x0.shape))
-        prevGrad = params.pop('prevGrad', None)
-        dfx = np.asarray(gradCost(*x0)).squeeze()
-        Hx = np.asarray(hessianCost(*x0)).squeeze()
+            prevDirection = params.pop('prevDirection', np.zeros(x0.shape))
+            prevGrad = params.pop('prevGrad', None)
+            dfx = np.asarray(gradCost(*x0)).squeeze()
+            Hx = np.asarray(hessianCost(*x0)).squeeze()
 
-        if prevGrad is None:
-            beta = 0
-        else:
-            beta = np.vdot(dfx, dfx)/np.vdot(prevGrad, prevGrad)
+            if prevGrad is None:
+                beta = 0
+            else:
+                beta = np.vdot(dfx, dfx)/np.vdot(prevGrad, prevGrad)
 
-        direction = -dfx + beta*prevDirection.squeeze()
-        alpha = np.vdot(dfx, dfx)/(np.dot(direction, np.dot(Hx, direction)))
-        step = alpha*direction
-        f = np.asarray(cost(*(x0 + step)))
+            direction = -dfx + beta*prevDirection.squeeze()
+            alpha = np.vdot(dfx, dfx)/(np.dot(direction, np.dot(Hx, direction)))
+            step = alpha*direction
+            f = np.asarray(cost(*(x0 + step)))
 
-        return step, f, {'nbFunEval': 1, 'nbGradEval':1, 'nbHessEval':1}, \
-                {'prevDirection': direction, 'prevGrad': dfx}, step
+            return step, f, {'nbFunEval': 1, 'nbGradEval':1, 'nbHessEval':1}, \
+                    {'prevDirection': direction, 'prevGrad': dfx}, step
 
-    return conjugateGradient
+        return conjugateGradient
+
+    elif lineSearchMethod is backtrackingLineSearch:
+        def fletcherReeves(x0, params):
+
+            k = params.pop('k', 0) + 1
+            prevDirection = params.pop('prevDirection', np.zeros(x0.shape))
+            prevGrad = params.pop('prevGrad', None)
+            dfx = np.asarray(gradCost(*x0)).squeeze()
+
+            if prevGrad is None:
+                beta = 0
+            else:
+                beta = np.vdot(dfx, dfx)/np.vdot(prevGrad, prevGrad)
+
+            direction = -dfx + beta*prevDirection.squeeze()
+            alpha, f, nbEval, newParams = lineSearchMethod(x0, dfx, direction, \
+                                                           cost, params, **args)
+            step = alpha*direction
+
+            if k == x0.size:
+                direction = None
+                dfx = None
+
+            return step, f, {'nbFunEval': nbEval, 'nbGradEval':1}, \
+                    {**newParams, 'prevDirection': direction, 'prevGrad': dfx}, step
+                    # dict(**newParams, Fx=fxScalar)
+
+        return fletcherReeves
+
+    else:
+        raise Exception('Invalid line search method')
