@@ -1,2 +1,9 @@
-./**/relatorio
-./**/report
+**/relatorio
+**/report
+**/.ipynb_checkpoints
+**/__pycache__
+**/*.gz
+**/*.tar
+**/*.html
+**/*.swp
+**/*.swo
