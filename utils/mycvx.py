@@ -206,3 +206,33 @@ def backtrackingLineSearch(x, dfx, vec, cost, params, **args):
         nbEval += 1
 
     return t, f, nbEval, {}
+
+def conjugateMethod(symbolVec, costSymbolic, **args):
+
+    costFuncs = deriveFunction(sp.Matrix(symbolVec), costSymbolic, ['func', 'grad', 'hess'])
+    cost = costFuncs['func']
+    gradCost = costFuncs['grad']
+    hessianCost = costFuncs['hess']
+
+    def conjugateGradient(x0, params):
+
+        x0 = x0.squeeze()
+        prevDirection = params.pop('prevDirection', np.zeros(x0.shape))
+        prevGrad = params.pop('prevGrad', None)
+        dfx = np.asarray(gradCost(*x0)).squeeze()
+        Hx = np.asarray(hessianCost(*x0)).squeeze()
+
+        if prevGrad is None:
+            beta = 0
+        else:
+            beta = np.vdot(dfx, dfx)/np.vdot(prevGrad, prevGrad)
+
+        direction = -dfx + beta*prevDirection.squeeze()
+        alpha = np.vdot(dfx, dfx)/(np.dot(direction, np.dot(Hx, direction)))
+        step = alpha*direction
+        f = np.asarray(cost(*(x0 + step)))
+
+        return step, f, {'nbFunEval': 1, 'nbGradEval':1, 'nbHessEval':1}, \
+                {'prevDirection': direction, 'prevGrad': dfx}, step
+
+    return conjugateGradient
