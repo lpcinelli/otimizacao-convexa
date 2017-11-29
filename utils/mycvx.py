@@ -72,14 +72,12 @@ def newtonDescent(symbolVec, costSymbolic, **args):
     gradCost = costFuncs['grad']
     hessianCost = costFuncs['hess']
     lineSearchMethod = args.pop('lineSearchMethod', noLineSearch)
-    beta = args.pop('beta', 0.3)
 
     def basicNewtonAlgo(x0, params):
 
         dfx = np.asarray(gradCost(*x0))
         Hx = np.asarray(hessianCost(*x0))
         eigVals = np.linalg.eigvals(Hx)
-        minVal = np.min(eigVals)
         if np.any(eigVals < 0.1):
             beta = 1.5*np.abs(np.min(eigVals))
             Hx = (Hx + beta*np.eye(Hx.shape[0]))/(1+beta)
@@ -101,7 +99,6 @@ def gaussNewtonDescent(symbolVec, costSymbolic, **args):
     scalarCost = sp.lambdify(symbolVec, \
                             costSymbolic(symbolVec).dot(costSymbolic(symbolVec)), modules=['numpy'])
     lineSearchMethod = args.pop('lineSearchMethod', noLineSearch)
-    beta = args.pop('beta', 0.3)
 
     def gaussNewtonAlgo(x0, params):
 
@@ -154,7 +151,7 @@ def hessianCorrectionMatDav(H):
 
         if H[k, k] > 0 and H[k, k] < h00:
             h00 = H[k, k]
-        
+
     L[-1, -1] = 1
     if H[-1, -1] <= 0:
         H[-1, -1] = h00
@@ -242,12 +239,13 @@ def conjugateMethod(symbolVec, costSymbolic, **args):
         def fletcherReeves(x0, params):
 
             k = params.pop('k', 0) + 1
-            prevDirection = params.pop('prevDirection', np.zeros(x0.shape))
+            prevDirection = params.pop('prevDirection', None)
             prevGrad = params.pop('prevGrad', None)
             dfx = np.asarray(gradCost(*x0)).squeeze()
 
             if prevGrad is None:
                 beta = 0
+                prevDirection = np.zeros(x0.shape)
             else:
                 beta = np.vdot(dfx, dfx)/np.vdot(prevGrad, prevGrad)
 
@@ -259,10 +257,10 @@ def conjugateMethod(symbolVec, costSymbolic, **args):
             if k == x0.size:
                 direction = None
                 dfx = None
+                k = 0
 
             return step, f, {'nbFunEval': nbEval, 'nbGradEval':1}, \
-                    {**newParams, 'prevDirection': direction, 'prevGrad': dfx}, step
-                    # dict(**newParams, Fx=fxScalar)
+                    {**newParams, 'prevDirection': direction, 'prevGrad': dfx, 'k': k}, step
 
         return fletcherReeves
 
