@@ -286,7 +286,7 @@ def DFP(step, S, gamma):
     correction = np.outer(step, step)/np.vdot(step, gamma) - \
                  np.outer(term, term)/np.vdot(gamma, term)
 
-    return S + correction               
+    return S + correction
 
 def BFGS(step, S, gamma):
 
@@ -296,7 +296,7 @@ def BFGS(step, S, gamma):
     term = S.dot(gamma)
     correction = (1 + np.vdot(gamma, term)/np.vdot(step, gamma))* \
                  np.outer(step, step)/np.vdot(step, gamma) - \
-                 (np.outer(step, term) + np.outer(term,step))/ \
+                 (np.outer(step, term) + np.outer(term, step))/ \
                  np.vdot(step, gamma)
 
     return S + correction
@@ -327,9 +327,6 @@ def quasiNewton(symbolVec, costSymbolic, **args):
             S = computeS(prevStep, prevS, gamma)    
 
         direction = - S.dot(dfx)
-
-        if k == 15:
-            print('here')
 
         alpha, f, nbEval, newParams = lineSearchMethod(x0, dfx, direction, \
                                                        cost, params, **args)
