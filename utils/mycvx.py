@@ -266,3 +266,80 @@ def conjugateMethod(symbolVec, costSymbolic, **args):
 
     else:
         raise Exception('Invalid line search method')
+
+def rankOne(step, S, gamma):
+
+    if S is None:
+        return np.eye(step.shape)
+
+    term = step - S.dot(gamma)
+    correction = np.outer(term, term)/np.vdot(gamma, term)
+
+    return S + correction
+
+def DFP(step, S, gamma):
+
+    if S is None:
+        return np.eye(step.shape)
+
+    term = S.dot(gamma)
+    correction = np.outer(step, step)/np.vdot(step, gamma) - \
+                 np.outer(term, term)/np.vdot(gamma, term)
+
+    return S + correction               
+
+def BFGS(step, S, gamma):
+
+    if S is None:
+        return np.eye(step.shape)
+
+    term = S.dot(gamma)
+    correction = (1 + np.vdot(gamma, term)/np.vdot(step, gamma))* \
+                 np.outer(step, step)/np.vdot(step, gamma) - \
+                 (np.outer(step, term) + np.outer(term,step))/ \
+                 np.vdot(step, gamma)
+
+    return S + correction
+
+def quasiNewton(symbolVec, costSymbolic, **args):
+
+    costFuncs = deriveFunction(sp.Matrix(symbolVec), costSymbolic, ['func', 'grad', 'hess'])
+    cost = costFuncs['func']
+    gradCost = costFuncs['grad']
+
+    lineSearchMethod = args.pop('lineSearchMethod', backtrackingLineSearch)
+    computeS = args.pop('method', rankOne)
+
+    def quasiNewtonAlgo(x0, params):
+
+        k = params.pop('iter', 0) + 1
+        prevS = params.pop('prevS', None)
+        prevGrad = params.pop('prevGrad', None)
+        prevStep = params.pop('prevStep', None)
+
+        dfx = np.asarray(gradCost(*x0)).squeeze()
+        if prevS is None:
+            S = np.eye(x0.shape[0])
+            prevGrad = np.zeros(x0.shape)
+            prevStep = np.zeros(x0.shape)
+        else:
+            gamma = dfx - prevGrad
+            S = computeS(prevStep, prevS, gamma)    
+
+        direction = - S.dot(dfx)
+
+        if k == 15:
+            print('here')
+
+        alpha, f, nbEval, newParams = lineSearchMethod(x0, dfx, direction, \
+                                                       cost, params, **args)
+        step = alpha*direction
+        # print(step)
+        # print(direction)
+        # print(dfx)
+        # print(S)
+        # print()
+        return step, f, {'nbFunEval': nbEval, 'nbGradEval':1}, \
+                    {**newParams, 'prevStep': step, 'prevGrad': dfx, 'prevS': S, 'iter':k}, step
+
+    return quasiNewtonAlgo
